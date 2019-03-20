@@ -140,6 +140,8 @@ app.post('/api/transactions', authenticate, (req, res) => {
           address,
           apikey: process.env.ETHEREUM_API_KEY,
           module: 'account',
+          offset: '1000',
+          page: '1',
           sort: 'desc',
         },
       })
