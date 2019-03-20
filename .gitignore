@@ -1,0 +1,21 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+Thumbs.db
+ehthumbs.db
+
+# Visual Studio Code generated files
+.history
+.vscode/*
+
+# NodeJS modules
+/node_modules
+
+# Environment variables and secrets
+.env
+
+# Google App Engine generated folder
+appengine-generated/

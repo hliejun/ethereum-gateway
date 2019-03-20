@@ -1,0 +1,26 @@
+{
+  "name": "tx-service",
+  "version": "1.0.0",
+  "description": "API service endpoints for exploring Ethereum blocks.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "NODE_ENV=development node server.js",
+    "prod": "NODE_ENV=production node server.js",
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Huang Lie Jun",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "body-parser": "^1.18.3",
+    "dotenv": "^7.0.0",
+    "express": "^4.16.4",
+    "http-errors": "^1.7.2",
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {
+    "eslint": "^5.15.3",
+    "eslint-config-google": "^0.12.0"
+  }
+}
