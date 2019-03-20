@@ -12,7 +12,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
-app.post('/auth', (req, res) => {
+app.post('/api/auth', (req, res) => {
   const payload = req.body;
   if (payload.token === process.env.VALIDATION_KEY) {
     const options =
@@ -52,7 +52,7 @@ const authenticate = (req, res, next) => {
   });
 };
 
-app.post('/balance', authenticate, (req, res) => {
+app.post('/api/balance', authenticate, (req, res) => {
   const payload = req.body;
   const address = payload.address;
   if (!address || address.length !== 42 || !address.startsWith('0x')) {
@@ -89,7 +89,7 @@ app.post('/balance', authenticate, (req, res) => {
       });
 });
 
-app.post('/rates', authenticate, (req, res) => {
+app.post('/api/rates', authenticate, (req, res) => {
   const payload = req.body;
   const symbols = payload.symbols;
   if (
@@ -126,7 +126,7 @@ app.post('/rates', authenticate, (req, res) => {
       });
 });
 
-app.post('/transactions', authenticate, (req, res) => {
+app.post('/api/transactions', authenticate, (req, res) => {
   const payload = req.body;
   const address = payload.address;
   if (!address || address.length !== 42 || !address.startsWith('0x')) {
