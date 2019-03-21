@@ -22,6 +22,17 @@ const parseTransaction = (address) => (transaction) => {
   const type = transaction.to === address ? 'incoming' : 'outgoing';
   const value = String(parseFloat(transaction.value) * etherRate);
   const gasPrice = parseFloat(transaction.gasPrice) * etherRate;
+  let status;
+  switch (transaction['txreceipt_status']) {
+    case '1':
+      status = 'success';
+      break;
+    case '0':
+      status = 'failed';
+      break;
+    default:
+      status = 'pending';
+  }
   return {
     block: {
       confirmations: transaction.confirmations,
@@ -41,7 +52,7 @@ const parseTransaction = (address) => (transaction) => {
       timestamp: transaction.timeStamp,
       type,
     },
-    status: transaction['txreceipt_status'] === '1' ? 'success' : 'failed',
+    status,
     value,
   };
 };
