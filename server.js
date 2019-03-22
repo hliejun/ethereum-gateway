@@ -120,6 +120,10 @@ app.post(
             return;
           })
           .catch((error) => {
+            if (!error || !error.status) {
+              res.status(502, 'Service is currently unavailable.');
+              return;
+            }
             res.status(error.status).json({message: error.message});
             return;
           });
@@ -162,6 +166,10 @@ app.post(
             return;
           })
           .catch((error) => {
+            if (!error || !error.status) {
+              res.status(502, 'Service is currently unavailable.');
+              return;
+            }
             res.status(error.status).json({message: error.message});
             return;
           });
@@ -206,6 +214,10 @@ app.post(
             return;
           })
           .catch((error) => {
+            if (!error || !error.status) {
+              res.status(502, 'Service is currently unavailable.');
+              return;
+            }
             res.status(error.status).json({message: error.message});
             return;
           });
