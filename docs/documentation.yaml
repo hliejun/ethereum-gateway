@@ -1,0 +1,448 @@
+openapi: 3.0.0
+info:
+  title: Tx Ethereum API Gateway
+  description: An aggregating API gateway built primarily for Tx Ethereum Block Explorer that serves as an interface or adapter for third-party API services.
+  contact:
+    email: hliejun.dev@gmail.com
+  version: 1.0-oas3
+servers:
+- url: https://tx-ethereum-explorer.appspot.com/api
+tags:
+- name: Authentication
+  description: User and session authentication requests
+- name: Etherscan
+  description: Data requests using Etherscan API
+  externalDocs:
+    description: Find out more
+    url: https://etherscan.io/apis
+- name: Open Exchange Rates
+  description: Data requests using OpenExchangeRates API
+  externalDocs:
+    description: Find out more
+    url: https://docs.openexchangerates.org
+paths:
+  /auth:
+    post:
+      tags:
+      - Authentication
+      summary: Authentication
+      description: Verify public API key with server, then hash with secret key and respond with a JWT auth token and creation timestamp.
+      operationId: AuthPost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+        400:
+          description: Bad Request (Malformed/Invalid Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        401:
+          description: Unauthorized (CORS Failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        429:
+          description: Too Many Requests (Rate-Limited)
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+      deprecated: false
+  /balance:
+    post:
+      tags:
+      - Etherscan
+      summary: Account Balance
+      description: Get the Ethereum account balance using the provided address hash, then respond with the balance in ETH unit.
+      operationId: BalancePost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountBalanceRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalanceResponse'
+        400:
+          description: Bad Request (Invalid Address)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        401:
+          description: Unauthorized (CORS Failure / Invalid Auth Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        429:
+          description: Too Many Requests (Rate-Limited)
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        502:
+          description: Bad Gateway (Invalid Balance / API Down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+      deprecated: false
+      security:
+      - bearerAuth: []
+  /rates:
+    post:
+      tags:
+      - Open Exchange Rates
+      summary: Currency Rates
+      description: Get the currency rates with an array of currency codes, then respond with the rates, timestamp and base currency code.
+      operationId: RatesPost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurrencyRatesRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyRatesResponse'
+        400:
+          description: Bad Request (Invalid Currency Codes)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        401:
+          description: Unauthorized (CORS Failure / Invalid Auth Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        429:
+          description: Too Many Requests (Rate-Limited)
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        502:
+          description: Bad Gateway (Invalid Rates / API Down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+      deprecated: false
+      security:
+      - bearerAuth: []
+  /transactions:
+    post:
+      tags:
+      - Etherscan
+      summary: Historical Transactions
+      description: Get the Ethereum account historical transactions (up to latest 1000) in reverse-chronological order, then respond with the formatted transactions.
+      operationId: TransactionsPost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HistoricalTransactionsRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricalTransactionsResponse'
+        400:
+          description: Bad Request (Invalid Address)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        401:
+          description: Unauthorized (CORS Failure / Invalid Auth Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        429:
+          description: Too Many Requests (Rate-Limited)
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        502:
+          description: Bad Gateway (Invalid Rates / API Down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+      deprecated: false
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    AuthenticationRequest:
+      title: AuthenticationRequest
+      required:
+      - token
+      type: object
+      properties:
+        token:
+          type: string
+          description: API key to access this gateway service
+      example:
+        token: token1234567890
+    AuthenticationResponse:
+      title: AuthenticationResponse
+      required:
+      - authToken
+      - timestamp
+      type: object
+      properties:
+        authToken:
+          type: string
+          description: Bearer token for future authorisations. Expires after a period of time.
+        timestamp:
+          type: string
+          description: Time when this Bearer token was issued.
+      example:
+        authToken: authToken1234567890
+        timestamp: "1234567890"
+    AccountBalanceRequest:
+      title: AccountBalanceRequest
+      required:
+      - address
+      type: object
+      properties:
+        address:
+          type: string
+          description: Ethereum address of the account to query for balance.
+      example:
+        address: 0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae
+    AccountBalanceResponse:
+      title: AccountBalanceResponse
+      required:
+      - balance
+      type: object
+      properties:
+        balance:
+          type: string
+          description: Balance of the ethereum account in ETH unit.
+      example:
+        balance: "12345678.90"
+    CurrencyRatesRequest:
+      title: CurrencyRatesRequest
+      required:
+      - symbols
+      type: object
+      properties:
+        symbols:
+          type: array
+          description: List of currency codes to query rates (against a base currency) for.
+          items:
+            type: string
+            description: Currency code.
+      example:
+        symbols:
+        - SGD
+        - GBP
+        - KRW
+        - JPY
+        - CNY
+        - ETH
+    CurrencyRatesResponse:
+      title: CurrencyRatesResponse
+      required:
+      - base
+      - rates
+      - timestamp
+      type: object
+      properties:
+        base:
+          type: string
+          description: Currency code of the base currency used to compute the rates against.
+        rates:
+          $ref: '#/components/schemas/CurrencyRatesResponse_rates'
+        timestamp:
+          type: string
+          description: Time when the rates were fetched.
+      example:
+        base: USD
+        rates:
+          CNY: 12.345
+          ETH: 1.2345E-4
+          GBP: 0.12345,
+          JPY: 123.45,
+          KRW: 1234.5,
+          SGD: 1.2345
+        timestamp: "1234567890"
+    HistoricalTransactionsRequest:
+      title: HistoricalTransactionsRequest
+      required:
+      - address
+      type: object
+      properties:
+        address:
+          type: string
+          description: Ethereum address of the account to query for transactions history.
+      example:
+        address: 0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae
+    HistoricalTransactionsResponse:
+      title: HistoricalTransactionsResponse
+      required:
+      - transactions
+      type: object
+      properties:
+        transactions:
+          type: array
+          description: List of the latest (max. 1000) transactions in reverse-chronological order.
+          items:
+            $ref: '#/components/schemas/HistoricalTransactionsResponse_transactions'
+      example:
+        transactions:
+        - block:
+            confirmations: "12345"
+            height: "12345"
+            id: 1234567890abcdefg
+          gas:
+            cumulativeUsed: "12345"
+            fee: "0.000012345"
+            limit: "12345"
+            price: "0.00000012345"
+            used: "12345"
+          id: abcdefg1234567890
+          source:
+            address: 12345abcdefg12345
+            timestamp: "1234567890"
+            type: incoming
+          status: success
+          value: "0.12345"
+    ResponseError:
+      title: ResponseError
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: number
+          description: Response error status code.
+        message:
+          type: string
+          description: Description of the error.
+      example:
+        code: 500
+        message: The gateway responded with an error.
+    CurrencyRatesResponse_rates:
+      type: object
+      properties:
+        CNY:
+          type: number
+          description: Rate for China Yuan.
+        ETH:
+          type: number
+          description: Rate for Ethereum.
+        GBP:
+          type: number
+          description: Rate for Great Britain Pound.
+        JPY:
+          type: number
+          description: Rate for Japan Yen.
+        KRW:
+          type: number
+          description: Rate for Korea Won.
+        SGD:
+          type: number
+          description: Rate for Singapore Dollar.
+      description: Map of currency codes to their rates.
+    HistoricalTransactionsResponse_block:
+      type: object
+      properties:
+        confirmations:
+          type: string
+          description: Number of confirmations.
+        height:
+          type: string
+          description: Block height.
+        id:
+          type: string
+          description: Block hash.
+      description: Block data.
+    HistoricalTransactionsResponse_gas:
+      type: object
+      properties:
+        cumulativeUsed:
+          type: string
+          description: Cumulative total gas used in the block.
+        fee:
+          type: string
+          description: Transaction fee applicable for this transaction.
+        limit:
+          type: string
+          description: Maximum amount of gas usage allowed.
+        price:
+          type: string
+          description: Price (ETH) per unit gas used.
+        used:
+          type: string
+          description: Amount of gas used for this transaction.
+      description: Gas data.
+    HistoricalTransactionsResponse_source:
+      type: object
+      properties:
+        address:
+          type: string
+          description: Address of the other party involved in this transaction.
+        timestamp:
+          type: string
+          description: Time when this transaction was processed.
+        type:
+          type: string
+          description: Flow of transaction relative to the user, either 'incoming' or 'outgoing'.
+      description: Source data.
+    HistoricalTransactionsResponse_transactions:
+      type: object
+      properties:
+        block:
+          $ref: '#/components/schemas/HistoricalTransactionsResponse_block'
+        gas:
+          $ref: '#/components/schemas/HistoricalTransactionsResponse_gas'
+        id:
+          type: string
+          description: Transaction hash or identifier.
+        source:
+          $ref: '#/components/schemas/HistoricalTransactionsResponse_source'
+        status:
+          type: string
+          description: Transaction status, either 'success', 'failed' or 'pending'.
+        value:
+          type: string
+          description: Transacted value in ETH unit.
+      description: A transaction.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -11,9 +11,11 @@ require('dotenv').config();
 const whitelist =
   process.env.NODE_ENV === 'development'
     ? [process.env.CLIENT_URL_LOCAL]
-    : [process.env.CLIENT_URL, process.env.GITHUB_URL];
+    : [process.env.CLIENT_URL, process.env.GITHUB_URL, process.env.SWAGGER_URL];
 
 const corsOptions = {
+  credentials: true,
+  optionsSuccessStatus: 200,
   origin: function(origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
@@ -21,26 +23,47 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  optionsSuccessStatus: 200,
+};
+
+const corsErrorHandler = (err, req, res, next) => {
+  if (!err) {
+    next();
+  } else if (err.message === 'Not allowed by CORS') {
+    const errorMessage =
+      'CORS pre-flight request failed as your domain is not whitelisted.';
+    res.status(401).json({code: 401, message: errorMessage});
+  } else {
+    next(err);
+  }
 };
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
-  message: 'Too many token requests from this IP, please try again later.',
+  message: {
+    code: 429,
+    message: 'Too many token requests from this IP, please try again later.',
+  },
 });
 
 const currLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 2,
-  message:
-    'Too many currency rate requests from this IP, please try again later.',
+  message: {
+    code: 429,
+    message:
+      'Too many currency rate requests from this IP, please try again later.',
+  },
 });
 
 const ethLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 10,
-  message: 'Too many transaction requests from this IP, please try again later',
+  message: {
+    code: 429,
+    message:
+      'Too many transaction requests from this IP, please try again later.',
+  },
 });
 
 const {parseBalance, parseRates, parseTransactions} = require('./parser');
@@ -49,26 +72,30 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
-app.options('/api/auth', cors(corsOptions));
-app.post('/api/auth', [cors(corsOptions), authLimiter], (req, res) => {
-  const payload = req.body;
-  if (payload.token === process.env.VALIDATION_KEY) {
-    const options =
-      process.env.NODE_ENV === 'development' ? {} : {expiresIn: '1h'};
-    const authToken = jwt.sign(
-        {token: payload.token},
-        process.env.SECRET_KEY,
-        options
-    );
-    res
-        .status(200)
-        .json({authToken, timestamp: String(new Date().getTime())});
-    return;
-  } else {
-    res.status(401).json({message: 'Invalid token.'});
-    return;
-  }
-});
+app.options('/api/auth', [cors(corsOptions), corsErrorHandler]);
+app.post(
+    '/api/auth',
+    [cors(corsOptions), corsErrorHandler, authLimiter],
+    (req, res) => {
+      const payload = req.body;
+      if (payload.token === process.env.VALIDATION_KEY) {
+        const options =
+        process.env.NODE_ENV === 'development' ? {} : {expiresIn: '1h'};
+        const authToken = jwt.sign(
+            {token: payload.token},
+            process.env.SECRET_KEY,
+            options
+        );
+        res
+            .status(200)
+            .json({authToken, timestamp: String(new Date().getTime())});
+        return;
+      } else {
+        res.status(400).json({message: 'Invalid or malformed token.'});
+        return;
+      }
+    }
+);
 
 const authenticate = (req, res, next) => {
   let authToken = req.headers['x-access-token'] || req.headers['authorization'];
@@ -92,10 +119,10 @@ const authenticate = (req, res, next) => {
   });
 };
 
-app.options('/api/balance', cors(corsOptions));
+app.options('/api/balance', [cors(corsOptions), corsErrorHandler]);
 app.post(
     '/api/balance',
-    [cors(corsOptions), ethLimiter, authenticate],
+    [cors(corsOptions), corsErrorHandler, ethLimiter, authenticate],
     (req, res) => {
       const payload = req.body;
       const address = payload.address;
@@ -116,7 +143,7 @@ app.post(
           .then((response) => {
             let data = response.data;
             if (data.status !== '1') {
-              return Promise.reject(createError(400, 'Malformed response.'));
+              return Promise.reject(createError(502, 'Malformed proxy response.'));
             }
             data = parseBalance(data);
             if (data == null) {
@@ -138,10 +165,10 @@ app.post(
     }
 );
 
-app.options('/api/rates', cors(corsOptions));
+app.options('/api/rates', [cors(corsOptions), corsErrorHandler]);
 app.post(
     '/api/rates',
-    [cors(corsOptions), currLimiter, authenticate],
+    [cors(corsOptions), corsErrorHandler, currLimiter, authenticate],
     (req, res) => {
       const payload = req.body;
       const symbols = payload.symbols;
@@ -151,7 +178,9 @@ app.post(
       symbols.length === 0 ||
       !symbols.includes('ETH')
       ) {
-        res.status(400).json({message: 'Invalid or missing currency codes.'});
+        res
+            .status(400)
+            .json({code: 400, message: 'Invalid or missing currency codes.'});
         return;
       }
       axios
@@ -175,24 +204,29 @@ app.post(
           })
           .catch((error) => {
             if (!error || !error.status) {
-              res.status(502, 'Service is currently unavailable.');
+              const errorMessage = 'Service is currently unavailable.';
+              res.status(502).json({code: 502, message: errorMessage});
               return;
             }
-            res.status(error.status).json({message: error.message});
+            res
+                .status(error.status)
+                .json({code: error.status, message: error.message});
             return;
           });
     }
 );
 
-app.options('/api/transactions', cors(corsOptions));
+app.options('/api/transactions', [cors(corsOptions), corsErrorHandler]);
 app.post(
     '/api/transactions',
-    [cors(corsOptions), ethLimiter, authenticate],
+    [cors(corsOptions), corsErrorHandler, ethLimiter, authenticate],
     (req, res) => {
       const payload = req.body;
       const address = payload.address;
       if (!address || address.length !== 42 || !address.startsWith('0x')) {
-        res.status(400).json({message: 'Invalid or missing address.'});
+        res
+            .status(400)
+            .json({code: 400, message: 'Invalid or missing address.'});
         return;
       }
       axios
@@ -210,7 +244,7 @@ app.post(
           .then((response) => {
             const data = response.data;
             if (data.status !== '1') {
-              return Promise.reject(createError(400, 'Malformed response.'));
+              return Promise.reject(createError(502, 'Malformed proxy response.'));
             }
             const transactions = parseTransactions(data, address);
             if (transactions == null) {
@@ -223,10 +257,13 @@ app.post(
           })
           .catch((error) => {
             if (!error || !error.status) {
-              res.status(502, 'Service is currently unavailable.');
+              const errorMessage = 'Service is currently unavailable.';
+              res.status(502).json({code: 502, message: errorMessage});
               return;
             }
-            res.status(error.status).json({message: error.message});
+            res
+                .status(error.status)
+                .json({code: error.status, message: error.message});
             return;
           });
     }
