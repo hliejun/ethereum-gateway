@@ -68,6 +68,10 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on code of conduct, t
 
 - **Huang Lie Jun** - _Initial development_ - [hliejun](https://hliejun.github.io)
 
+## Acknowledgement
+
+- **Swagger** - API documentation and documentation UI (Swagger-UI)
+
 ## License
 
 This project is licensed under the [MIT License](https://choosealicense.com/licenses/mit/) - see the [LICENSE.md](LICENSE.md) file for details

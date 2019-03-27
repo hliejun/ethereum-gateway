@@ -47,8 +47,8 @@ const authLimiter = rateLimit({
 });
 
 const currLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 2,
+  windowMs: 30 * 60 * 1000,
+  max: 10,
   message: {
     code: 429,
     message:
